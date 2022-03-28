@@ -12,4 +12,5 @@ public final class CustomFileChooser extends JFileChooser {
         this.setFileFilter(filter);
         this.setPreferredSize(new Dimension(700, 550));
     }
+
 }

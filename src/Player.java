@@ -8,6 +8,15 @@ import java.awt.event.MouseMotionListener;
 import javazoom.jl.player.FactoryRegistry;
 import support.PlayerWindow;
 import support.Song;
+import support.CustomFileChooser;
+
+import javax.swing.*;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Condition;
+
 
 import java.awt.event.ActionListener;
 
@@ -33,16 +42,20 @@ public class Player {
     private boolean shuffle = false;
     private boolean playerEnabled = false;
     private boolean playerPaused = true;
+    private boolean isPlaying = false;
     private Song currentSong;
+    private Song newSong;
     private int currentFrame = 0;
     private int newFrame;
+    private final Lock lock = new ReentrantLock();
 
+    private ArrayList <String> listaDeMusicas = new ArrayList<>();
     String[][] queue = {};
 
     public Player() {
         ActionListener buttonListenerPlayNow = e -> playPause();
         ActionListener buttonListenerRemove = e -> playPause();
-        ActionListener buttonListenerAddSong = e -> playPause();
+        ActionListener buttonListenerAddQueue = e -> addToQueue(newSong);
         ActionListener buttonListenerShuffle = e -> playPause();
         ActionListener buttonListenerPrevious = e -> playPause();
         ActionListener buttonListenerPlayPause = e -> playPause();
@@ -53,6 +66,7 @@ public class Player {
         MouseListener scrubberListenerClick = new MouseListener() {
             @Override
             public void mouseClicked(MouseEvent e) {
+
             }
 
             @Override
@@ -83,7 +97,7 @@ public class Player {
         };
 
         this.playerWindow = new PlayerWindow("Spotify", this.queue, buttonListenerPlayNow,
-                buttonListenerRemove, buttonListenerAddSong, buttonListenerShuffle,
+                buttonListenerRemove, buttonListenerAddQueue, buttonListenerShuffle,
                 buttonListenerPrevious, buttonListenerPlayPause, buttonListenerStop,
                 buttonListenerNext, buttonListenerRepeat, scrubberListenerClick, scrubberListenerMotion);
     }
@@ -93,8 +107,6 @@ public class Player {
     public void init() {
 
     }
-
-
 
     /**
      * @return False if there are no more frames to play.
@@ -142,6 +154,19 @@ public class Player {
 
     //<editor-fold desc="Queue Utilities">
     public void addToQueue(Song song) {
+        Thread addThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                CustomFileChooser cc = new CustomFileChooser();
+                int returnValue = cc.showOpenDialog(null);
+                if(returnValue == JFileChooser.APPROVE_OPTION){
+                    File selectedFile = cc.getSelectedFile();
+                    listaDeMusicas.add(selectedFile.getName());
+                    System.out.println(listaDeMusicas.get(0));
+                };
+            }
+        });
+        addThread.start();
     }
 
     public void removeFromQueue(String filePath) {
@@ -176,4 +201,5 @@ public class Player {
     //<editor-fold desc="Getters and Setters">
 
     //</editor-fold>
+
 }
