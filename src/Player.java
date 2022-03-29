@@ -18,11 +18,12 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.Condition;
 
 
+
 import java.awt.event.ActionListener;
 
 public class Player {
 
-    private PlayerWindow playerWindow;
+    //private PlayerWindow playerWindow;
     /**
      * The MPEG audio bitstream.
      */
@@ -49,7 +50,7 @@ public class Player {
     private int newFrame;
     private final Lock lock = new ReentrantLock();
 
-    private ArrayList <String> listaDeMusicas = new ArrayList<>();
+    private ArrayList <String[]> listaDeMusicas = new ArrayList<>();
     String[][] queue = {};
 
     public Player() {
@@ -96,7 +97,7 @@ public class Player {
             }
         };
 
-        this.playerWindow = new PlayerWindow("Spotify", this.queue, buttonListenerPlayNow,
+        this.window = new PlayerWindow("Spotify", this.queue, buttonListenerPlayNow,
                 buttonListenerRemove, buttonListenerAddQueue, buttonListenerShuffle,
                 buttonListenerPrevious, buttonListenerPlayPause, buttonListenerStop,
                 buttonListenerNext, buttonListenerRepeat, scrubberListenerClick, scrubberListenerMotion);
@@ -157,19 +158,28 @@ public class Player {
         Thread addThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                CustomFileChooser cc = new CustomFileChooser();
-                int returnValue = cc.showOpenDialog(null);
-                if(returnValue == JFileChooser.APPROVE_OPTION){
-                    File selectedFile = cc.getSelectedFile();
-                    listaDeMusicas.add(selectedFile.getName());
-                    System.out.println(listaDeMusicas.get(0));
-                };
+                    try{
+                        newSong = window.getNewSong();
+                        String[] metaDados = newSong.getDisplayInfo();
+                        listaDeMusicas.add(metaDados);
+                        changeQueue();
+                    }
+                    catch (java.io.IOException | BitstreamException | UnsupportedTagException | InvalidDataException exception){
+                        System.out.println("error");
+                    }
             }
         });
         addThread.start();
     }
 
     public void removeFromQueue(String filePath) {
+
+    }
+
+    public void changeQueue(){
+        String[][] converter = new String[this.listaDeMusicas.size()][7]; //cria uma matriz, onde cada linha representa uma musica, e tem 7 colunas que são as categorias da musica
+        this.queue = this.listaDeMusicas.toArray(converter); //Converter o array list em uma matriz de array e atualizar a fila
+        window.updateQueueList(this.queue); // Bota a fila na tela
     }
 
     public String[][] getQueueAsArray() {
