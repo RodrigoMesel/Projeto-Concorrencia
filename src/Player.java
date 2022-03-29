@@ -122,34 +122,17 @@ public class Player {
      * @return False if there are no more frames to play.
      */
     private boolean playNextFrame() throws JavaLayerException {
-        Thread running = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    lock.lock();
-                    if (device != null) {
-                        Header h = bitstream.readFrame();
-                        if (h == null) return;
+        // TODO Is this thread safe?
+        if (device != null) {
+            Header h = bitstream.readFrame();
+            if (h == null) return false;
 
-                        SampleBuffer output = (SampleBuffer) decoder.decodeFrame(h, bitstream);
-                        device.write(output.getBuffer(), 0, output.getBufferLength());
-                        bitstream.closeFrame();
-                    }
-                    return;
-                }
-                catch (JavaLayerException e){
-                    System.out.println(e);
-                }
-                finally {
-                    lock.unlock();
-                }
-
-            }
-        });
-        running.start();
+            SampleBuffer output = (SampleBuffer) decoder.decodeFrame(h, bitstream);
+            device.write(output.getBuffer(), 0, output.getBufferLength());
+            bitstream.closeFrame();
+        }
         return true;
     }
-
     /**
      * @return False if there are no more frames to skip.
      */
@@ -180,51 +163,45 @@ public class Player {
 
     //<editor-fold desc="Queue Utilities">
     public void addToQueue(Song song) {
-        Thread addThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                    try{
-                        lock.lock();
-                        newSong = window.getNewSong();
-                        String[] metaDados = newSong.getDisplayInfo();
-                        listaDeMusicas.add(metaDados);
-                        listaDeSons.add(newSong);
-                        changeQueue();
-                    }
-                    catch (java.io.IOException | BitstreamException | UnsupportedTagException | InvalidDataException exception){
-                        System.out.println("error");
-                    }
-                    finally {
-                        lock.unlock();
-                    }
-            }
+        Thread addThread = new Thread(() -> {
+                try{
+                    lock.lock();
+                    newSong = window.getNewSong();
+                    String[] metaDados = newSong.getDisplayInfo();
+                    listaDeMusicas.add(metaDados);
+                    listaDeSons.add(newSong);
+                    changeQueue();
+                }
+                catch (java.io.IOException | BitstreamException | UnsupportedTagException | InvalidDataException exception){
+                    System.out.println("error");
+                }
+                finally {
+                    lock.unlock();
+                }
         });
         addThread.start();
     }
 
     public void removeFromQueue(String filepath) {
-        Thread removeThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try{
-                    lock.lock();
-                    String removed = new String();
-                    for(int i = 0; i < listaDeMusicas.size(); i++){
-                        if(listaDeMusicas.get(i)[5].equals(filepath)){  //Vai procurar na lista a musica que tem o mesmo filepath da que se deseja remover
-                            removed = listaDeMusicas.get(i)[0];
-                            listaDeMusicas.remove(i);
-                        }
+        Thread removeThread = new Thread(() -> {
+            try{
+                lock.lock();
+                String removed = new String();
+                for(int i = 0; i < listaDeMusicas.size(); i++){
+                    if(listaDeMusicas.get(i)[5].equals(filepath)){  //Vai procurar na lista a musica que tem o mesmo filepath da que se deseja remover
+                        removed = listaDeMusicas.get(i)[0];
+                        listaDeMusicas.remove(i);
                     }
-                    for(int j = 0; j < listaDeSons.size(); j++){
-                        if(listaDeSons.get(j).getTitle().equals(removed)){
-                            listaDeSons.remove(j);
-                        }
+                }
+                for(int j = 0; j < listaDeSons.size(); j++){
+                    if(listaDeSons.get(j).getTitle().equals(removed)){
+                        listaDeSons.remove(j);
                     }
-                    changeQueue();
                 }
-                finally {
-                    lock.unlock();
-                }
+                changeQueue();
+            }
+            finally {
+                lock.unlock();
             }
         });
         removeThread.start();
@@ -249,38 +226,52 @@ public class Player {
 
     //<editor-fold desc="Controls">
     public void playNow(String filePath) {
-        Thread playing = new Thread(new Runnable() {
-            @Override
-            public void run() {
+        Thread playing = new Thread(() -> {
+          try {
+              lock.lock();
+              for (int i = 0; i < listaDeSons.size(); i++) {
+                  if (listaDeSons.get(i).getFilePath().equals(filePath)) {
+                      currentSong = listaDeSons.get(i);
+                  }
+              }
               try {
-                  lock.lock();
-                  for (int i = 0; i < listaDeSons.size(); i++) {
-                      if (listaDeSons.get(i).getFilePath().equals(filePath)) {
-                          currentSong = listaDeSons.get(i);
-                      }
-                  }
-                  try {
-                      device = FactoryRegistry.systemRegistry().createAudioDevice();
-                      device.open(decoder = new Decoder());
-                      bitstream = new Bitstream(currentSong.getBufferedInputStream());
-                      playNextFrame();
-                  }
-                  catch (JavaLayerException | FileNotFoundException e){
-                      System.out.println(e);
-                  }
+                  device = FactoryRegistry.systemRegistry().createAudioDevice();
+                  device.open(decoder = new Decoder());
+                  bitstream = new Bitstream(currentSong.getBufferedInputStream());
+                  playingMusic();
+
               }
-              finally {
-                  isPlaying = true;
-                  paused = false;
-                  window.updatePlayingSongInfo(currentSong.getTitle(), currentSong.getAlbum(), currentSong.getArtist());
-                  window.updatePlayPauseButtonIcon(paused);
-                  window.setEnabledScrubberArea(isPlaying);
-                  lock.unlock();
+              catch (JavaLayerException | FileNotFoundException e){
+                  System.out.println(e);
               }
-            }
+          }
+          finally {
+              isPlaying = true;
+              paused = false;
+              window.updatePlayingSongInfo(currentSong.getTitle(), currentSong.getAlbum(), currentSong.getArtist());
+              window.updatePlayPauseButtonIcon(paused);
+              window.setEnabledScrubberArea(isPlaying);
+              lock.unlock();
+          }
         });
         playing.start();
     }
+
+    public void playingMusic(){
+        Thread running = new Thread(() -> {
+            boolean go = true;
+            while (go && !paused) {
+                try {
+                    go = playNextFrame();
+                } catch (JavaLayerException e) {
+                    System.out.println(e);
+                }
+            }
+        });
+        running.start();
+    }
+
+
 
     public void stop() {
         isPlaying = false;
@@ -290,7 +281,11 @@ public class Player {
     }
 
     public void playPause() {
+        paused = !paused;
         window.updatePlayPauseButtonIcon(paused);
+        if(paused == false) {
+            playingMusic();
+        }
     }
 
     public void resume() {
