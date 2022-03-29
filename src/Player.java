@@ -195,7 +195,11 @@ public class Player {
                 }
                 for(int j = 0; j < listaDeSons.size(); j++){
                     if(listaDeSons.get(j).getTitle().equals(removed)){
+                        Song remov = listaDeSons.get(j);
                         listaDeSons.remove(j);
+                        if(remov == currentSong){
+                            stop();
+                        }
                     }
                 }
                 changeQueue();
