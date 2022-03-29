@@ -159,6 +159,7 @@ public class Player {
             @Override
             public void run() {
                     try{
+                        lock.lock();
                         newSong = window.getNewSong();
                         String[] metaDados = newSong.getDisplayInfo();
                         listaDeMusicas.add(metaDados);
@@ -166,6 +167,9 @@ public class Player {
                     }
                     catch (java.io.IOException | BitstreamException | UnsupportedTagException | InvalidDataException exception){
                         System.out.println("error");
+                    }
+                    finally {
+                        lock.unlock();
                     }
             }
         });
