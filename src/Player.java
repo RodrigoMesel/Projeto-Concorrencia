@@ -45,6 +45,7 @@ public class Player {
     private boolean paused = true;
     private Song currentSong;
     private Song selected;
+    private int counter = 0;
     private Song newSong;
     private int currentFrame = 0;
     private int newFrame;
@@ -230,6 +231,7 @@ public class Player {
 
     //<editor-fold desc="Controls">
     public void playNow(String filePath) {
+        counter = 0;
         Thread playing = new Thread(() -> {
           try {
               lock.lock();
@@ -266,7 +268,11 @@ public class Player {
             boolean go = true;
             while (go && !paused) {
                 try {
+                    int actualtime = (int) (counter * currentSong.getMsPerFrame()/1000);
+                    int totaltime = (int) currentSong.getMsLength()/1000;
+                    window.setTime(actualtime, totaltime);
                     go = playNextFrame();
+                    counter++;
                 } catch (JavaLayerException e) {
                     System.out.println(e);
                 }
@@ -275,13 +281,15 @@ public class Player {
         running.start();
     }
 
-
-
     public void stop() {
+        counter = 0;
         isPlaying = false;
         paused = true;
         window.updatePlayPauseButtonIcon(paused);
         window.setEnabledScrubberArea(isPlaying);
+        int actualtime = (int) (counter * currentSong.getMsPerFrame()/1000);
+        int totaltime = (int) currentSong.getMsLength()/1000;
+        window.setTime(actualtime, totaltime);
     }
 
     public void playPause() {
