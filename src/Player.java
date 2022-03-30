@@ -235,11 +235,18 @@ public class Player {
         Thread playing = new Thread(() -> {
           try {
               lock.lock();
+              isPlaying = true;
+              paused = false;
+
               for (int i = 0; i < listaDeSons.size(); i++) {
                   if (listaDeSons.get(i).getFilePath().equals(filePath)) {
                       currentSong = listaDeSons.get(i);
                   }
+
               }
+              window.updatePlayingSongInfo(currentSong.getTitle(), currentSong.getAlbum(), currentSong.getArtist());
+              window.updatePlayPauseButtonIcon(paused);
+              window.setEnabledScrubberArea(isPlaying);
               try {
                   device = FactoryRegistry.systemRegistry().createAudioDevice();
                   device.open(decoder = new Decoder());
@@ -252,11 +259,7 @@ public class Player {
               }
           }
           finally {
-              isPlaying = true;
-              paused = false;
-              window.updatePlayingSongInfo(currentSong.getTitle(), currentSong.getAlbum(), currentSong.getArtist());
-              window.updatePlayPauseButtonIcon(paused);
-              window.setEnabledScrubberArea(isPlaying);
+
               lock.unlock();
           }
         });
@@ -268,8 +271,8 @@ public class Player {
             boolean go = true;
             while (go && !paused) {
                 try {
-                    int actualtime = (int) (counter * currentSong.getMsPerFrame()/1000);
-                    int totaltime = (int) currentSong.getMsLength()/1000;
+                    int actualtime = (int) (counter * currentSong.getMsPerFrame());
+                    int totaltime = (int) currentSong.getMsLength();
                     window.setTime(actualtime, totaltime);
                     go = playNextFrame();
                     counter++;
@@ -285,11 +288,7 @@ public class Player {
         counter = 0;
         isPlaying = false;
         paused = true;
-        window.updatePlayPauseButtonIcon(paused);
-        window.setEnabledScrubberArea(isPlaying);
-        int actualtime = (int) (counter * currentSong.getMsPerFrame()/1000);
-        int totaltime = (int) currentSong.getMsLength()/1000;
-        window.setTime(actualtime, totaltime);
+        window.resetMiniPlayer();
     }
 
     public void playPause() {
