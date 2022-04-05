@@ -236,7 +236,6 @@ public class Player {
 
         if(isPlaying){
             doublePlay = true;
-            paused = false;
         }
 
         Thread playing = new Thread(() -> {
