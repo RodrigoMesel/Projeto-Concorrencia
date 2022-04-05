@@ -43,6 +43,7 @@ public class Player {
     private boolean playerPaused = true;
     private boolean isPlaying = false;
     private boolean paused = true;
+    private boolean doublePlay = false;
     private Song currentSong;
     private Song selected;
     private int counter = 0;
@@ -232,8 +233,15 @@ public class Player {
     //<editor-fold desc="Controls">
     public void playNow(String filePath) {
         counter = 0;
+
+        if(isPlaying){
+            doublePlay = true;
+            paused = false;
+        }
+
         Thread playing = new Thread(() -> {
           try {
+
               lock.lock();
               isPlaying = true;
               paused = false;
@@ -271,6 +279,10 @@ public class Player {
             boolean go = true;
             while (go && !paused) {
                 try {
+                    if(doublePlay){
+                        doublePlay = false;
+                        break;
+                    }
                     int actualtime = (int) (counter * currentSong.getMsPerFrame());
                     int totaltime = (int) currentSong.getMsLength();
                     window.setTime(actualtime, totaltime);
@@ -293,6 +305,7 @@ public class Player {
 
     public void playPause() {
         paused = !paused;
+        isPlaying = false;
         window.updatePlayPauseButtonIcon(paused);
         if(paused == false) {
             playingMusic();
