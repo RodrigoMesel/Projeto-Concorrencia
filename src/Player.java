@@ -44,8 +44,10 @@ public class Player {
     private boolean isPlaying = false;
     private boolean paused = true;
     private boolean doublePlay = false;
+    private boolean go = true;
     private Song currentSong;
     private Song selected;
+    private int actualIndex;
     private int counter = 0;
     private Song newSong;
     private int currentFrame = 0;
@@ -60,23 +62,22 @@ public class Player {
         ActionListener buttonListenerPlayNow = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String now = window.getSelectedSong();
-                playNow(now);
+                actualIndex = window.selectIndex();
+                playNow(actualIndex);
             }
         };
         ActionListener buttonListenerRemove = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                String removed = window.getSelectedSong();
-                removeFromQueue(removed);
+                removeFromQueue();
             }
         };
         ActionListener buttonListenerAddQueue = e -> addToQueue(newSong);
         ActionListener buttonListenerShuffle = e -> aux();
-        ActionListener buttonListenerPrevious = e -> aux();
+        ActionListener buttonListenerPrevious = e -> previous();
         ActionListener buttonListenerPlayPause = e -> playPause();
         ActionListener buttonListenerStop = e -> stop();
-        ActionListener buttonListenerNext = e -> aux();
+        ActionListener buttonListenerNext = e -> next();
         ActionListener buttonListenerRepeat = e -> aux();
 
         MouseListener scrubberListenerClick = new MouseListener() {
@@ -184,26 +185,22 @@ public class Player {
         addThread.start();
     }
 
-    public void removeFromQueue(String filepath) {
+    public void removeFromQueue() {
         Thread removeThread = new Thread(() -> {
             try{
+                int removeIndex;
                 lock.lock();
-                String removed = new String();
-                for(int i = 0; i < listaDeMusicas.size(); i++){
-                    if(listaDeMusicas.get(i)[5].equals(filepath)){  //Vai procurar na lista a musica que tem o mesmo filepath da que se deseja remover
-                        removed = listaDeMusicas.get(i)[0];
-                        listaDeMusicas.remove(i);
-                    }
+
+                removeIndex = window.selectIndex();
+                listaDeMusicas.remove(removeIndex);
+                listaDeSons.remove(removeIndex);
+                if(removeIndex == actualIndex){
+                    stop();
                 }
-                for(int j = 0; j < listaDeSons.size(); j++){
-                    if(listaDeSons.get(j).getTitle().equals(removed)){
-                        Song remov = listaDeSons.get(j);
-                        listaDeSons.remove(j);
-                        if(remov == currentSong){
-                            stop();
-                        }
-                    }
+                else if(removeIndex < actualIndex){
+                    actualIndex--;
                 }
+
                 changeQueue();
             }
             finally {
@@ -231,7 +228,7 @@ public class Player {
     //</editor-fold>
 
     //<editor-fold desc="Controls">
-    public void playNow(String filePath) {
+    public void playNow(int index) {
         counter = 0;
 
         if(isPlaying){
@@ -245,15 +242,12 @@ public class Player {
               isPlaying = true;
               paused = false;
 
-              for (int i = 0; i < listaDeSons.size(); i++) {
-                  if (listaDeSons.get(i).getFilePath().equals(filePath)) {
-                      currentSong = listaDeSons.get(i);
-                  }
+              currentSong = listaDeSons.get(index);
 
-              }
               window.updatePlayingSongInfo(currentSong.getTitle(), currentSong.getAlbum(), currentSong.getArtist());
               window.updatePlayPauseButtonIcon(paused);
               window.setEnabledScrubberArea(isPlaying);
+
               try {
                   device = FactoryRegistry.systemRegistry().createAudioDevice();
                   device.open(decoder = new Decoder());
@@ -275,7 +269,7 @@ public class Player {
 
     public void playingMusic(){
         Thread running = new Thread(() -> {
-            boolean go = true;
+            go = true;
             while (go && !paused) {
                 try {
                     if(doublePlay){
@@ -290,6 +284,15 @@ public class Player {
                 } catch (JavaLayerException e) {
                     System.out.println(e);
                 }
+            }
+            if(!go) {
+                isPlaying = false;
+            }
+            if(!go && actualIndex < listaDeSons.size() - 1){
+                next();
+            }
+            else if(!go && actualIndex == listaDeSons.size() - 1){
+                stop();
             }
         });
         running.start();
@@ -311,13 +314,20 @@ public class Player {
         }
     }
 
-    public void resume() {
-    }
-
     public void next() {
+        if(actualIndex != listaDeSons.size()-1){
+            actualIndex++;
+            currentSong = listaDeSons.get(actualIndex);
+            playNow(actualIndex);
+        }
     }
 
     public void previous() {
+        if(actualIndex != 0){
+            actualIndex--;
+            currentSong = listaDeSons.get(actualIndex);
+            playNow(actualIndex);
+        }
     }
 
 

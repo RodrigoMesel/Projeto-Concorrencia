@@ -438,6 +438,10 @@ public class PlayerWindow {
         setEnabledScrubber(false);
     }
 
+    public int selectIndex(){
+        return queueList.getSelectedRow();
+    }
+
     /**
      * @return the ID of the selected song in the queue. Should be called whenever the 'Play Now' and 'Remove'
      * buttons are pressed.
