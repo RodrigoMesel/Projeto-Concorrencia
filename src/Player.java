@@ -160,26 +160,19 @@ public class Player {
      * @throws BitstreamException
      */
     private void skipToFrame(int newFrame) throws BitstreamException {
-        //Thread skip = new Thread(() -> {
 
-          //  try {
-          //      lock.lock();
-                if (newFrame > currentFrame) {
-                    int framesToSkip = newFrame - currentFrame;
+        if (newFrame > currentFrame) {
+            int framesToSkip = newFrame - currentFrame;
 
-                    boolean condition = true;
-                    while (framesToSkip-- > 0 && condition)
-                        try {
-                            condition = skipNextFrame();
-                        } catch (BitstreamException e) {
-                            System.out.println(e);
-                        }
+            boolean condition = true;
+            while (framesToSkip-- > 0 && condition)
+                try {
+                    condition = skipNextFrame();
+                } catch (BitstreamException e) {
+                    System.out.println(e);
                 }
-           // }finally {
-           //     lock.unlock();
-           // }
-        //});
-        //skip.start();
+        }
+
     }
     //</editor-fold>
 
@@ -332,6 +325,8 @@ public class Player {
         paused = !paused;
         if(paused) {
             isPlaying = false;
+        }else{
+            isPlaying = true;
         }
         window.updatePlayPauseButtonIcon(paused);
         if(!paused) {
@@ -375,7 +370,9 @@ public class Player {
                     System.out.println(e);
                 }
 
-                paused = false;
+                if(isPlaying){
+                    paused = false;
+                }
 
                 playingMusic();
 
