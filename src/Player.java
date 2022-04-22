@@ -53,6 +53,9 @@ public class Player {
     private int currentFrame = 0;
     private int newFrame;
     private final Lock lock = new ReentrantLock();
+    private int goToTime;
+    private int actualTime;
+    private int totalTime;
 
     private ArrayList <String[]> listaDeMusicas = new ArrayList<>();
     private ArrayList <Song> listaDeSons = new ArrayList<>();
@@ -87,10 +90,12 @@ public class Player {
 
             @Override
             public void mousePressed(MouseEvent e) {
+                pressed();
             }
 
             @Override
             public void mouseReleased(MouseEvent e) {
+                released();
             }
 
             @Override
@@ -155,12 +160,26 @@ public class Player {
      * @throws BitstreamException
      */
     private void skipToFrame(int newFrame) throws BitstreamException {
-        // TODO Is this thread safe?
-        if (newFrame > currentFrame) {
-            int framesToSkip = newFrame - currentFrame;
-            boolean condition = true;
-            while (framesToSkip-- > 0 && condition) condition = skipNextFrame();
-        }
+        //Thread skip = new Thread(() -> {
+
+          //  try {
+          //      lock.lock();
+                if (newFrame > currentFrame) {
+                    int framesToSkip = newFrame - currentFrame;
+
+                    boolean condition = true;
+                    while (framesToSkip-- > 0 && condition)
+                        try {
+                            condition = skipNextFrame();
+                        } catch (BitstreamException e) {
+                            System.out.println(e);
+                        }
+                }
+           // }finally {
+           //     lock.unlock();
+           // }
+        //});
+        //skip.start();
     }
     //</editor-fold>
 
@@ -210,9 +229,6 @@ public class Player {
         removeThread.start();
     }
 
-    public void aux(){
-
-    }
 
     public void changeQueue(){
         String[][] converter = new String[this.listaDeMusicas.size()][7]; //cria uma matriz, onde cada linha representa uma musica, e tem 7 colunas que são as categorias da musica
@@ -230,6 +246,7 @@ public class Player {
     //<editor-fold desc="Controls">
     public void playNow(int index) {
         counter = 0;
+        currentFrame = 0;
 
         if(isPlaying){
             doublePlay = true;
@@ -247,6 +264,7 @@ public class Player {
               window.updatePlayingSongInfo(currentSong.getTitle(), currentSong.getAlbum(), currentSong.getArtist());
               window.updatePlayPauseButtonIcon(paused);
               window.setEnabledScrubberArea(isPlaying);
+
 
               try {
                   device = FactoryRegistry.systemRegistry().createAudioDevice();
@@ -267,18 +285,23 @@ public class Player {
         playing.start();
     }
 
+    public void aux(){
+
+    }
+
     public void playingMusic(){
         Thread running = new Thread(() -> {
             go = true;
+
             while (go && !paused) {
                 try {
                     if(doublePlay){
                         doublePlay = false;
                         break;
                     }
-                    int actualtime = (int) (counter * currentSong.getMsPerFrame());
-                    int totaltime = (int) currentSong.getMsLength();
-                    window.setTime(actualtime, totaltime);
+                    actualTime = (int) (counter * currentSong.getMsPerFrame());
+                    totalTime = (int) currentSong.getMsLength();
+                    window.setTime(actualTime, totalTime);
                     go = playNextFrame();
                     counter++;
                 } catch (JavaLayerException e) {
@@ -307,9 +330,11 @@ public class Player {
 
     public void playPause() {
         paused = !paused;
-        isPlaying = false;
+        if(paused) {
+            isPlaying = false;
+        }
         window.updatePlayPauseButtonIcon(paused);
-        if(paused == false) {
+        if(!paused) {
             playingMusic();
         }
     }
@@ -317,7 +342,6 @@ public class Player {
     public void next() {
         if(actualIndex != listaDeSons.size()-1){
             actualIndex++;
-            currentSong = listaDeSons.get(actualIndex);
             playNow(actualIndex);
         }
     }
@@ -325,9 +349,42 @@ public class Player {
     public void previous() {
         if(actualIndex != 0){
             actualIndex--;
-            currentSong = listaDeSons.get(actualIndex);
             playNow(actualIndex);
         }
+    }
+
+    public void pressed(){
+        paused = true;
+    }
+
+    public void released(){
+        Thread release = new Thread (() ->{
+            try{
+
+                lock.lock();
+                goToTime = (int) (window.getScrubberValue() / currentSong.getMsPerFrame());
+
+                counter = goToTime;
+
+                window.setTime((int) (counter * currentSong.getMsPerFrame()), totalTime);
+
+                try {
+                    skipToFrame(goToTime);
+
+                } catch (BitstreamException e){
+                    System.out.println(e);
+                }
+
+                paused = false;
+
+                playingMusic();
+
+            }finally {
+                lock.unlock();
+            }
+        });
+        release.start();
+
     }
 
 
