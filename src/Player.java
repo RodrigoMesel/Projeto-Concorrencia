@@ -131,10 +131,10 @@ public class Player {
      */
     private boolean playNextFrame() throws JavaLayerException {
         // TODO Is this thread safe?
+
         if (device != null) {
             Header h = bitstream.readFrame();
             if (h == null) return false;
-
             SampleBuffer output = (SampleBuffer) decoder.decodeFrame(h, bitstream);
             device.write(output.getBuffer(), 0, output.getBufferLength());
             bitstream.closeFrame();
@@ -353,46 +353,39 @@ public class Player {
     }
 
     public void released(){
-        Thread release = new Thread (() ->{
-            try{
 
-                try {
-                    currentFrame = 0;
-                    device = FactoryRegistry.systemRegistry().createAudioDevice();
-                    device.open(decoder = new Decoder());
-                    bitstream = new Bitstream(currentSong.getBufferedInputStream());
-                    playingMusic();
-
-                }
-                catch (JavaLayerException | FileNotFoundException e){
-                    System.out.println(e);
-                }
-
-                lock.lock();
-                goToTime = (int) (window.getScrubberValue() / currentSong.getMsPerFrame());
-
-                counter = goToTime;
-
-                window.setTime((int) (counter * currentSong.getMsPerFrame()), totalTime);
-
-                try {
-                    skipToFrame(goToTime);
-
-                } catch (BitstreamException e){
-                    System.out.println(e);
-                }
-
-                if(isPlaying){
-                    paused = false;
-                }
-
+            try {
+                currentFrame = 0;
+                device = FactoryRegistry.systemRegistry().createAudioDevice();
+                device.open(decoder = new Decoder());
+                bitstream = new Bitstream(currentSong.getBufferedInputStream());
                 playingMusic();
 
-            }finally {
-                lock.unlock();
             }
-        });
-        release.start();
+            catch (JavaLayerException | FileNotFoundException e){
+                System.out.println(e);
+            }
+
+            goToTime = (int) (window.getScrubberValue() / currentSong.getMsPerFrame());
+
+            counter = goToTime;
+
+            window.setTime((int) (counter * currentSong.getMsPerFrame()), totalTime);
+
+            try {
+                skipToFrame(goToTime);
+
+            } catch (BitstreamException e){
+                goToTime = 0;
+            }
+
+            if(isPlaying){
+                paused = false;
+            }
+
+
+
+            playingMusic();
 
     }
 
