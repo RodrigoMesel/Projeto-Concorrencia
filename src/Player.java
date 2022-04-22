@@ -356,6 +356,18 @@ public class Player {
         Thread release = new Thread (() ->{
             try{
 
+                try {
+                    currentFrame = 0;
+                    device = FactoryRegistry.systemRegistry().createAudioDevice();
+                    device.open(decoder = new Decoder());
+                    bitstream = new Bitstream(currentSong.getBufferedInputStream());
+                    playingMusic();
+
+                }
+                catch (JavaLayerException | FileNotFoundException e){
+                    System.out.println(e);
+                }
+
                 lock.lock();
                 goToTime = (int) (window.getScrubberValue() / currentSong.getMsPerFrame());
 
