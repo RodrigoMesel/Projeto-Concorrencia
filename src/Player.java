@@ -59,6 +59,14 @@ public class Player {
 
     private ArrayList <String[]> listaDeMusicas = new ArrayList<>();
     private ArrayList <Song> listaDeSons = new ArrayList<>();
+
+
+    private ArrayList <Song> shuffleListSong = new ArrayList<>();
+    private ArrayList <String[]> shuffleList = new ArrayList<>();
+    int shuffleIndex;
+    private Song shuffleSong;
+    private String[] shuffleString;
+
     String[][] queue = {};
 
     public Player() {
@@ -76,12 +84,12 @@ public class Player {
             }
         };
         ActionListener buttonListenerAddQueue = e -> addToQueue(newSong);
-        ActionListener buttonListenerShuffle = e -> aux();
+        ActionListener buttonListenerShuffle = e -> shuflleButton();
         ActionListener buttonListenerPrevious = e -> previous();
         ActionListener buttonListenerPlayPause = e -> playPause();
         ActionListener buttonListenerStop = e -> stop();
         ActionListener buttonListenerNext = e -> next();
-        ActionListener buttonListenerRepeat = e -> aux();
+        ActionListener buttonListenerRepeat = e -> repeatButton();
 
         MouseListener scrubberListenerClick = new MouseListener() {
             @Override
@@ -187,8 +195,12 @@ public class Player {
                     lock.lock();
                     newSong = window.getNewSong();
                     String[] metaDados = newSong.getDisplayInfo();
+
+
                     listaDeMusicas.add(metaDados);
                     listaDeSons.add(newSong);
+                    shuffleList.add(metaDados);
+                    shuffleListSong.add(newSong);
                     changeQueue();
                 }
                 catch (java.io.IOException | BitstreamException | UnsupportedTagException | InvalidDataException exception){
@@ -204,12 +216,24 @@ public class Player {
     public void removeFromQueue() {
         Thread removeThread = new Thread(() -> {
             try{
+
                 int removeIndex;
                 lock.lock();
 
                 removeIndex = window.selectIndex();
+
+                Song removed = listaDeSons.get(removeIndex);
                 listaDeMusicas.remove(removeIndex);
                 listaDeSons.remove(removeIndex);
+                for (int i = 0; i < listaDeSons.size(); i++) {
+                    if (removed == shuffleListSong.get(i)) {
+                        shuffleListSong.remove(i);
+                        shuffleList.remove(i);
+                        break;
+                    }
+                }
+
+
                 if(removeIndex == actualIndex){
                     stop();
                 }
@@ -282,9 +306,6 @@ public class Player {
         playing.start();
     }
 
-    public void aux(){
-
-    }
 
     public void playingMusic(){
         Thread running = new Thread(() -> {
@@ -315,8 +336,12 @@ public class Player {
             if(!go && actualIndex < listaDeSons.size() - 1){
                 next();
             }
-            else if(!go && actualIndex == listaDeSons.size() - 1){
+            else if(!go && actualIndex == listaDeSons.size() - 1 && !repeat){
                 stop();
+            }
+            else if(!go && actualIndex == listaDeSons.size() - 1 && repeat){
+                actualIndex = 0;
+                playNow(actualIndex);
             }
         });
         running.start();
@@ -347,6 +372,10 @@ public class Player {
             actualIndex++;
             playNow(actualIndex);
         }
+        else if(actualIndex == listaDeSons.size()-1 && repeat){
+            actualIndex = 0;
+            playNow(actualIndex);
+        }
     }
 
     public void previous() {
@@ -356,6 +385,9 @@ public class Player {
         }
     }
 
+    public void repeatButton(){
+        repeat = !repeat;
+    }
 
     public void pressed(){
         paused = true;
@@ -393,6 +425,103 @@ public class Player {
 
             playingMusic();
 
+    }
+
+    public void shuflleButton(){
+        Thread random = new Thread(() -> {
+
+            shuffle = !shuffle;
+
+            if(isPlaying || paused) {
+                if (shuffle) {
+
+                    shuffleList.clear();
+                    shuffleListSong.clear();
+                    shuffleListSong.addAll(listaDeSons);
+                    shuffleList.addAll(listaDeMusicas);
+
+
+                    //Troca no array de Songs
+                    shuffleSong = listaDeSons.get(actualIndex);
+                    listaDeSons.set(actualIndex, listaDeSons.get(0));
+                    listaDeSons.set(0, shuffleSong);
+
+                    //Troca no array de Strings
+                    shuffleString = listaDeMusicas.get(actualIndex);
+                    listaDeMusicas.set(actualIndex, listaDeMusicas.get(0));
+                    listaDeMusicas.set(0, shuffleString);
+
+                    actualIndex = 0;
+
+                    for (int i = 1; i < listaDeSons.size(); i++) {
+                        int randomNumber = (int) Math.floor(Math.random() * (listaDeSons.size() - i) + i);
+                        shuffleSong = listaDeSons.get(randomNumber);
+                        listaDeSons.set(randomNumber, listaDeSons.get(i));
+                        listaDeSons.set(i, shuffleSong);
+
+                        shuffleString = listaDeMusicas.get(randomNumber);
+                        listaDeMusicas.set(randomNumber, listaDeMusicas.get(i));
+                        listaDeMusicas.set(i, shuffleString);
+                    }
+
+                    changeQueue();
+                } else {
+
+                    listaDeSons.clear();
+                    listaDeMusicas.clear();
+                    listaDeSons.addAll(shuffleListSong);
+                    listaDeMusicas.addAll(shuffleList);
+
+                    for (int i = 0; i < listaDeSons.size(); i++) {
+                        if (currentSong == listaDeSons.get(i)) {
+                            actualIndex = i;
+                            break;
+                        }
+                    }
+                    changeQueue();
+                }
+            }
+            else{
+
+                if (shuffle) {
+
+                    shuffleList.clear();
+                    shuffleListSong.clear();
+                    shuffleListSong.addAll(listaDeSons);
+                    shuffleList.addAll(listaDeMusicas);
+
+                    for (int i = 0; i < listaDeSons.size(); i++) {
+                        int randomNumber = (int) Math.floor(Math.random() * (listaDeSons.size() - i) + i);
+                        shuffleSong = listaDeSons.get(randomNumber);
+                        listaDeSons.set(randomNumber, listaDeSons.get(i));
+                        listaDeSons.set(i, shuffleSong);
+
+                        shuffleString = listaDeMusicas.get(randomNumber);
+                        listaDeMusicas.set(randomNumber, listaDeMusicas.get(i));
+                        listaDeMusicas.set(i, shuffleString);
+                    }
+
+                    changeQueue();
+                } else {
+
+                    listaDeSons.clear();
+                    listaDeMusicas.clear();
+                    listaDeSons.addAll(shuffleListSong);
+                    listaDeMusicas.addAll(shuffleList);
+
+                    for (int i = 0; i < listaDeSons.size(); i++) {
+                        if (currentSong == listaDeSons.get(i)) {
+                            actualIndex = i;
+                            break;
+                        }
+                    }
+                    changeQueue();
+                }
+
+            }
+
+        });
+        random.start();
     }
 
 
