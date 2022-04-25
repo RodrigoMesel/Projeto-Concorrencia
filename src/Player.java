@@ -135,9 +135,13 @@ public class Player {
         if (device != null) {
             Header h = bitstream.readFrame();
             if (h == null) return false;
-            SampleBuffer output = (SampleBuffer) decoder.decodeFrame(h, bitstream);
-            device.write(output.getBuffer(), 0, output.getBufferLength());
-            bitstream.closeFrame();
+            try {
+                SampleBuffer output = (SampleBuffer) decoder.decodeFrame(h, bitstream);
+                device.write(output.getBuffer(), 0, output.getBufferLength());
+                bitstream.closeFrame();
+            } catch (DecoderException e){
+                next();
+            }
         }
         return true;
     }
@@ -165,7 +169,7 @@ public class Player {
             int framesToSkip = newFrame - currentFrame;
 
             boolean condition = true;
-            while (framesToSkip-- > 0 && condition)
+            while (framesToSkip-- >= 0 && condition)
                 try {
                     condition = skipNextFrame();
                 } catch (BitstreamException e) {
@@ -295,7 +299,11 @@ public class Player {
                     actualTime = (int) (counter * currentSong.getMsPerFrame());
                     totalTime = (int) currentSong.getMsLength();
                     window.setTime(actualTime, totalTime);
-                    go = playNextFrame();
+                    if(window.getScrubberValue() < currentSong.getMsLength()){
+                        go = playNextFrame();}
+                    else{
+                        go = false;
+                    }
                     counter++;
                 } catch (JavaLayerException e) {
                     System.out.println(e);
@@ -348,6 +356,7 @@ public class Player {
         }
     }
 
+
     public void pressed(){
         paused = true;
     }
@@ -364,7 +373,6 @@ public class Player {
             catch (JavaLayerException | FileNotFoundException e){
                 System.out.println(e);
             }
-
 
             goToTime = (int) (window.getScrubberValue() / currentSong.getMsPerFrame());
 
