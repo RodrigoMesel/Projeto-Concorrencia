@@ -161,7 +161,7 @@ public class Player {
      */
     private void skipToFrame(int newFrame) throws BitstreamException {
 
-        if (newFrame > currentFrame) {
+        if (newFrame >= currentFrame) {
             int framesToSkip = newFrame - currentFrame;
 
             boolean condition = true;
@@ -359,12 +359,12 @@ public class Player {
                 device = FactoryRegistry.systemRegistry().createAudioDevice();
                 device.open(decoder = new Decoder());
                 bitstream = new Bitstream(currentSong.getBufferedInputStream());
-                playingMusic();
 
             }
             catch (JavaLayerException | FileNotFoundException e){
                 System.out.println(e);
             }
+
 
             goToTime = (int) (window.getScrubberValue() / currentSong.getMsPerFrame());
 
@@ -376,14 +376,12 @@ public class Player {
                 skipToFrame(goToTime);
 
             } catch (BitstreamException e){
-                goToTime = 0;
+                System.out.println(e);
             }
 
             if(isPlaying){
                 paused = false;
             }
-
-
 
             playingMusic();
 
