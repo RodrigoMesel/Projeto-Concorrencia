@@ -42,7 +42,7 @@ public class Player {
     private boolean playerEnabled = false;
     private boolean playerPaused = true;
     private boolean isPlaying = false;
-    private boolean paused = true;
+    private boolean paused = false; // Mudei pra começar como false pro shuffle funcionar quando não tiver começado a tocar ainda
     private boolean doublePlay = false;
     private boolean go = true;
     private Song currentSong;
